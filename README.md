@@ -21,7 +21,7 @@ FlatFoot is run under the PHP process, and therefore creates files as `www-data`
   
 FlatFoot automatically creates directories that don't exist, and CHMOD's to 0777 for easy editing. You may want to remove the filesystem CMS objects when you are finished editing.  
   
-FlatFoot uses JSON to encode CMS object definitions, which is currently not 'tidy.'  
+FlatFoot uses JSON to encode CMS object definitions, which is currently not *'tidy.'*  
 
 ## Credit
 Prior to creating FlatFoot, I attempted modifying [Yellow Canvas by Panthr](http://forum.lemonstandapp.com/topic/991/lemonstand-module-yellow-canvas/) for my needs, but found that it solves a different set of problems than I needed.
