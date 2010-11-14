@@ -75,7 +75,7 @@ class FlatFoot_Helper {
         $template->save();
         
         if($this->settings->debug)
-          echo "Template (file > db) synchronized.<br />";
+          echo "Template (file > db) synchronized. ({$template_path})<br />";
       }
       else if($db_updated > $template_updated) {
         $this->file_put_contents($template_path, $template->html_code);
@@ -93,7 +93,7 @@ class FlatFoot_Helper {
         }
         
         if($this->settings->debug)
-          echo "Template (db > file) synchronized.<br />";
+          echo "Template (db > file) synchronized. ({$template_path})<br />";
       }
     }
   }
@@ -145,8 +145,6 @@ class FlatFoot_Helper {
       $partial->auto_timestamps = false;
       $definition = $partial->serialize();
       
-
-      
       $timezone = new DateTimeZone(Phpr::$config->get('TIMEZONE'));
       
       if($partial->updated_at) {
@@ -173,17 +171,17 @@ class FlatFoot_Helper {
           $partial->save();
           
           if($this->settings->debug)
-            echo "Partial (file > db) synchronized.<br />";
+            echo "Partial (file > db) synchronized. ({$partial_path})<br />";
         }
         else {
           $partial->delete();
           
           $this->rmfile($partial_path);
           $this->rmdir($partial_dir);
+          
+          if($this->settings->debug)
+            echo "Partial deletion. ({$partial_path})<br />";
         }
-        
-        if($this->settings->debug)
-          echo "Partial deletion.<br />";
       }
       else if($db_updated > $partial_updated) {
         $content = trim($partial->html_code);
@@ -210,7 +208,7 @@ class FlatFoot_Helper {
           $this->rmdir($partial_dir);
           
           if($this->settings->debug)
-            echo "Partial deletion.<br />";
+            echo "Partial deletion. ({$partial_path})<br />";
         }
       }
     }
@@ -278,7 +276,7 @@ class FlatFoot_Helper {
         $page->save();
         
         if($this->settings->debug)
-          echo "Page (file > db) synchronized.<br />";
+          echo "Page (file > db) synchronized. ({$page_path})<br />";
       }
       else if($db_updated > $page_updated) {
         $definition = $page->serialize();
@@ -328,7 +326,7 @@ class FlatFoot_Helper {
         }
         
         if($this->settings->debug)
-          echo "Page (db > file) synchronized.<br />";
+          echo "Page (db > file) synchronized. ({$page_path})<br />";
       }
     }
   }
@@ -358,19 +356,22 @@ class FlatFoot_Helper {
    * @param boolean $remove_root Delete specified top-level directory as well
    */
   private function rmdir($dir, $remove_root = true) {
-    if(!$dh = @opendir($dir))
+    if(!file_exists($dir))
+      return;
+    
+    if(!$d1 = opendir($dir))
         return;
 
-    while(($obj = readdir($dh)) !== false)
+    while(($path = readdir($d1)) !== false)
     {
-        if($obj == '.' || $obj == '..')
-            continue;
+      if($path == '.' || $path == '..')
+          continue;
 
-        if (!@unlink($dir . '/' . $obj))
-            $this->rmdir($dir . '/' . $obj, true);
+      if (!@unlink($dir . '/' . $path))
+          $this->rmdir($dir . '/' . $path, true);
     }
 
-    closedir($dh);
+    closedir($d1);
    
     if($remove_root)
         @rmdir($dir);

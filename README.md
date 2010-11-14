@@ -19,7 +19,7 @@ FlatFoot iterates the database templates/partials/pages, it adds any that don't 
   
 FlatFoot is run under the PHP process, and therefore creates files as `www-data` or other. If you copy the module to a different server, the files should have the same user/group, or else a `chown www-data:www-data -R ./` may be in order.  
   
-FlatFoot automatically creates directories that don't exist, and CHMOD's to 0777 for easy editing. You may want to remove the filesystem CMS objects when you are finished editing.  
+FlatFoot automatically creates directories that don't exist, and does a `chmod -R 0777 ./` for easy editing. You may want to remove the filesystem CMS objects when you are finished editing.  
   
 FlatFoot uses JSON to encode CMS object definitions, which is currently not *'tidy.'*  
 
