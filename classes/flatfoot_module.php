@@ -5,7 +5,7 @@ class FlatFoot_Module extends Core_ModuleBase {
   {
     if(Phpr::$security->getUser()) { // resynctastic if logged in
       $helper = new FlatFoot_Helper(array(
-        'debug' => true
+        'debug' => Phpr::$config->get('DEV_MODE')
       ));
       
       $helper->sync_templates();

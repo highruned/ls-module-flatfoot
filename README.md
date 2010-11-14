@@ -7,9 +7,11 @@ Download FlatFoot as a ZIP, and extract `flatfoot` folder into the `modules` dir
 ## Usage
 While logged into the Administration Area, each page reload (either in the backend or frontend) will synchronize any changes from the database into the filesystem, or any changes from the filesystem into the database.  
   
-You can locate the filesystem CMS objects at `resources/cms`: `resources/cms/templates`, `resources/cms/partials`, `resources/cms/pages`.   
+You can locate the filesystem CMS objects at `resources/cms` in `resources/cms/templates`, `resources/cms/partials`, `resources/cms/pages`.   
   
-Currently, CMS objects should be added/removed from the Administration Area. In the future FlatFoot will keep track of these changes.
+Currently, CMS objects should be added/removed from the Administration Area. In the future FlatFoot will keep track of these changes.  
+  
+If you want to enable debugging, in order to see what FlatFoot is doing upon page refresh, simply enable `DEV_MODE` in `config/config.php`.  
 
 ## Important
 FlatFoot relies on file modification dates; therefore your OS time should be the same as your LemonStand configuration (which can be found in `config/config.php`).
