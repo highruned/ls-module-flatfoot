@@ -45,12 +45,12 @@ class FlatFoot_Helper {
       $definition = $template->serialize();
       
       $sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower($template->name));
-      $file_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '.php';
-      $file_exists = file_exists($file_path);
-      $file_updated = $file_exists ? filemtime($file_path) : 0;
-      $file_definition_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '/definition.inc';
-      $file_definition_exists = file_exists($file_definition_path);
-      $file_definition_updated = $file_definition_exists ? filemtime($file_definition_path) : 0;
+      $template_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '.php';
+      $template_exists = file_exists($template_path);
+      $template_updated = $template_exists ? filemtime($template_path) : 0;
+      $template_definition_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '/definition.inc';
+      $template_definition_exists = file_exists($template_definition_path);
+      $template_definition_updated = $template_definition_exists ? filemtime($template_definition_path) : 0;
       
       $timezone = new DateTimeZone(Phpr::$config->get('TIMEZONE'));
       
@@ -63,32 +63,32 @@ class FlatFoot_Helper {
         $db_updated = 0;
       }
 
-      if($file_exists && $file_updated > $db_updated) {
-        if($file_definition_exists) {
-          $definition = json_decode(file_get_contents($file_definition_path));
+      if($template_exists && $template_updated > $db_updated) {
+        if($template_definition_exists) {
+          $definition = json_decode(file_get_contents($template_definition_path));
 
           $template->save($definition);
         }
         
-        $template->html_code = file_get_contents($file_path);
-        $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $file_updated));
+        $template->html_code = file_get_contents($template_path);
+        $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $template_updated));
         $template->save();
         
         if($this->settings->debug)
           echo "Template (file > db) synchronized.<br />";
       }
-      else if($db_updated > $file_updated) {
-        $this->file_put_contents($file_path, $template->html_code);
+      else if($db_updated > $template_updated) {
+        $this->file_put_contents($template_path, $template->html_code);
         unset($definition['fields']['html_code']);
         
-        $this->file_put_contents($file_definition_path, json_encode($definition));
+        $this->file_put_contents($template_definition_path, json_encode($definition));
         
         // db content hasn't changed, but re-sync timestamps
-        $file_exists = file_exists($file_path);
-        $file_updated = $file_exists ? filemtime($file_path) : 0;
+        $template_exists = file_exists($template_path);
+        $template_updated = $template_exists ? filemtime($template_path) : 0;
 
-        if($file_updated) {
-          $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $file_updated));
+        if($template_updated) {
+          $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $template_updated));
           $template->save();
         }
         
@@ -99,18 +99,53 @@ class FlatFoot_Helper {
   }
   
   public function sync_partials() {
+    $partial_list = array();
+    $partials_dir = $this->settings->storage_dir . 'partials/';
+    
+    $this->mkdir($partials_dir);
+    
+    if(!$d1 = @opendir($partials_dir))
+      return;
+
+    while(($path = readdir($d1)) !== false) {
+        if($path === '.' || $path === '..')
+            continue;
+        $path = explode('.', $path);
+        
+        if(end($path) === 'php') {
+          $sanitized_name = implode('.', array_slice($path, 0, -1));
+          
+          $partial_list[$sanitized_name] = false;
+        }
+    }
+
+    closedir($d1);
+    
     foreach(Cms_Partial::create()->find_all() as $partial) {
+      $sanitized_name = str_replace(':', ';', $partial->name);
+      
+      $partial_list[$sanitized_name] = $partial;
+    }
+    
+    foreach($partial_list as $sanitized_name => $partial) {
+      $partial_path = $this->settings->storage_dir . 'partials/' . $sanitized_name . '.php';
+      $partial_exists = file_exists($partial_path);
+      $partial_updated = $partial_exists ? filemtime($partial_path) : 0;
+      $partial_dir = $this->settings->storage_dir . 'partials/' . $sanitized_name . '/';
+      $partial_definition_path = $partial_dir . 'definition.inc';
+      $partial_definition_exists = file_exists($partial_definition_path);
+      $partial_definition_updated = $partial_definition_exists ? filemtime($partial_definition_path) : 0;
+      
+      if(!$partial) {
+        $partial = new Cms_Partial();
+        $partial->name = str_replace(';', ':', $sanitized_name);
+        $partial->html_code = file_get_contents($partial_path);
+      }
+      
       $partial->auto_timestamps = false;
       $definition = $partial->serialize();
       
-      $sanitized_name = str_replace(':', ';', $partial->name);
-      
-      $file_path = $this->settings->storage_dir . 'partials/' . $sanitized_name . '.php';
-      $file_exists = file_exists($file_path);
-      $file_updated = $file_exists ? filemtime($file_path) : 0;
-      $file_definition_path = $this->settings->storage_dir . 'partials/' . $sanitized_name . '/definition.inc';
-      $file_definition_exists = file_exists($file_definition_path);
-      $file_definition_updated = $file_definition_exists ? filemtime($file_definition_path) : 0;
+
       
       $timezone = new DateTimeZone(Phpr::$config->get('TIMEZONE'));
       
@@ -123,39 +158,60 @@ class FlatFoot_Helper {
         $db_updated = 0;
       }
 
-      if($file_exists && $file_updated > $db_updated) {
-        var_dump($file_updated, $db_updated);
-        if($file_definition_exists) {
-          $definition = json_decode(file_get_contents($file_definition_path));
+      if($partial_exists && $partial_updated > $db_updated) {
+        if($partial_definition_exists) {
+          $definition = json_decode(file_get_contents($partial_definition_path));
           
           $partial->unserialize($definition);
         }
         
-        $partial->html_code = file_get_contents($file_path);
-        $partial->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $file_updated));
-        $partial->save();
-
-        if($this->settings->debug)
-          echo "Partial (file > db) synchronized.<br />";
-      }
-      else if($db_updated > $file_updated) {
-        $this->file_put_contents($file_path, $partial->html_code);
-        unset($definition['fields']['html_code']);
+        $content = trim(file_get_contents($partial_path));
         
-        $this->file_put_contents($file_definition_path, json_encode($definition));
-        
-        // db content hasn't changed, but re-sync timestamps
-        $file_exists = file_exists($file_path);
-        $file_updated = $file_exists ? filemtime($file_path) : 0;
-
-        if($file_updated) {
-          $partial->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $file_updated));
-
+        if($content && $content !== '-') {
+          $partial->html_code = $content;
+          $partial->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $partial_updated));
           $partial->save();
+          
+          if($this->settings->debug)
+            echo "Partial (file > db) synchronized.<br />";
+        }
+        else {
+          $partial->delete();
+          
+          $this->rmfile($partial_path);
+          $this->rmdir($partial_dir);
         }
         
         if($this->settings->debug)
-          echo "Partial (db > file) synchronized.<br />";
+          echo "Partial deletion.<br />";
+      }
+      else if($db_updated > $partial_updated) {
+        $content = trim($partial->html_code);
+        
+        if($content && $content !== '-') {
+          $this->file_put_contents($partial_path, $content);
+          unset($definition['fields']['html_code']);
+          
+          $this->file_put_contents($partial_definition_path, json_encode($definition));
+          
+          // db content hasn't changed, but re-sync timestamps
+          $partial_updated = filemtime($partial_path);
+
+          $partial->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $partial_updated));
+          $partial->save();
+          
+          if($this->settings->debug)
+            echo "Partial (db > file) synchronized.<br />";
+        }
+        else {
+          $partial->delete();
+          
+          $this->rmfile($partial_path);
+          $this->rmdir($partial_dir);
+          
+          if($this->settings->debug)
+            echo "Partial deletion.<br />";
+        }
       }
     }
   }
@@ -293,5 +349,37 @@ class FlatFoot_Helper {
       mkdir($dir, 0777, true);
     
     umask($umask);
+  }
+  
+  /**
+   * Recursively delete a directory
+   *
+   * @param string $dir Directory name
+   * @param boolean $remove_root Delete specified top-level directory as well
+   */
+  private function rmdir($dir, $remove_root = true) {
+    if(!$dh = @opendir($dir))
+        return;
+
+    while(($obj = readdir($dh)) !== false)
+    {
+        if($obj == '.' || $obj == '..')
+            continue;
+
+        if (!@unlink($dir . '/' . $obj))
+            $this->rmdir($dir . '/' . $obj, true);
+    }
+
+    closedir($dh);
+   
+    if($remove_root)
+        @rmdir($dir);
+   
+    return;
+  }
+  
+  private function rmfile($path) {
+    if(is_file($path))
+      @unlink($path);
   }
 }
