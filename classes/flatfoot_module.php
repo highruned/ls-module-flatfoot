@@ -4,7 +4,10 @@ class FlatFoot_Module extends Core_ModuleBase {
   protected function createModuleInfo()
   {
     if(Phpr::$security->getUser()) { // resynctastic if logged in
-      $helper = new FlatFoot_Helper();
+      $helper = new FlatFoot_Helper(array(
+        'debug' => true
+      ));
+      
       $helper->sync_templates();
       $helper->sync_partials();
       $helper->sync_pages();

@@ -41,6 +41,7 @@ class FlatFoot_Helper {
   
   public function sync_templates() {
     foreach(Cms_Template::create()->find_all() as $template) {
+      $template->auto_timestamps = false;
       $definition = $template->serialize();
       
       $sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower($template->name));
@@ -99,6 +100,7 @@ class FlatFoot_Helper {
   
   public function sync_partials() {
     foreach(Cms_Partial::create()->find_all() as $partial) {
+      $partial->auto_timestamps = false;
       $definition = $partial->serialize();
       
       $sanitized_name = str_replace(':', ';', $partial->name);
@@ -122,6 +124,7 @@ class FlatFoot_Helper {
       }
 
       if($file_exists && $file_updated > $db_updated) {
+        var_dump($file_updated, $db_updated);
         if($file_definition_exists) {
           $definition = json_decode(file_get_contents($file_definition_path));
           
@@ -131,7 +134,7 @@ class FlatFoot_Helper {
         $partial->html_code = file_get_contents($file_path);
         $partial->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $file_updated));
         $partial->save();
-        
+
         if($this->settings->debug)
           echo "Partial (file > db) synchronized.<br />";
       }
@@ -147,6 +150,7 @@ class FlatFoot_Helper {
 
         if($file_updated) {
           $partial->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $file_updated));
+
           $partial->save();
         }
         
