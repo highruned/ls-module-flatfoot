@@ -9,9 +9,13 @@ While logged into the Administration Area, each page reload (either in the backe
   
 You can locate the filesystem CMS objects at `resources/cms` in `resources/cms/templates`, `resources/cms/partials`, `resources/cms/pages`.   
   
-Currently, CMS objects should be added/removed from the Administration Area. In the future FlatFoot will keep track of these changes.  
+### Creation/Deletion
+In order to add a CMS object from the filesystem, simply create them as you normally would but with sanitized filenames in mind (colons become semicolons, read below). However, in order for FlatFile to update filesystem files from changes made in the Administration Area, they must belong to the same user/group as PHP.  
   
-If you want to enable debugging, in order to see what FlatFoot is doing upon page refresh, simply enable `DEV_MODE` in `config/config.php`.  
+In order to delete a CMS object from teh filesystem, simply save the file with no content, or just `-` as the content. Again, correct file permissions must be set.
+
+### Enable Debugging
+In order to see what FlatFoot is doing upon page refresh, simply enable `DEV_MODE` in `config/config.php`.
 
 ## Important
 FlatFoot relies on file modification dates; therefore your OS time should be the same as your LemonStand configuration (which can be found in `config/config.php`).
@@ -19,7 +23,7 @@ FlatFoot relies on file modification dates; therefore your OS time should be the
 ## Technical
 FlatFoot iterates the database templates/partials/pages, it adds any that don't exist on the filesystem, if it does exist then it compares the modified date to decide which to copy to the other.  
   
-FlatFoot is run under the PHP process, and therefore creates files as `www-data` or other. If you copy the module to a different server, the files should have the same user/group, or else a `chown www-data:www-data -R ./` may be in order.  
+FlatFoot is run under the PHP process, and therefore creates files as `www-data` or other. If you copy the module to a different server, the files should have the same user/group as PHP, or else a `chown www-data:www-data -R ./` may be in order.  
   
 FlatFoot automatically creates directories that don't exist, and does a `chmod -R 0777 ./` for easy editing. You may want to remove the filesystem CMS objects when you are finished editing.  
   
