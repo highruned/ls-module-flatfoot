@@ -15,8 +15,8 @@ class FlatFoot_Module extends Core_ModuleBase {
      
     return new Core_ModuleInfo(
       "FlatFoot",
-      "FlatFoot features",
-      "Limewheel Creative Inc."
+      "CMS object database <-> filesystem synchronization",
+      "Eric Muyser"
     );
   }
   
