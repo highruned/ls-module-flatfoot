@@ -7,7 +7,7 @@ class FlatFoot_Module extends Core_ModuleBase {
       $helper = new FlatFoot_Helper(array(
         'debug' => Phpr::$config->get('DEV_MODE')
       ));
-      
+
       $helper->sync_templates();
       $helper->sync_partials();
       $helper->sync_pages();
@@ -15,8 +15,8 @@ class FlatFoot_Module extends Core_ModuleBase {
      
     return new Core_ModuleInfo(
       "FlatFoot",
-      "FlatFoot features",
-      "Limewheel Creative Inc."
+      "CMS object database <-> filesystem synchronization",
+      "Eric Muyser"
     );
   }
   

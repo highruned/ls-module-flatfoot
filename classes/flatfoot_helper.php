@@ -93,7 +93,10 @@ class FlatFoot_Helper {
       $template->auto_timestamps = false;
       $definition = $template->serialize();
       $definition = $definition['fields'];
-      unset($definition['html_code'], $definition['created_at'], $definition['updated_at']);
+      
+      unset($definition['html_code'], 
+        $definition['created_at'], 
+        $definition['updated_at']);
       
       $sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower($template->name));
       $template_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '.php';
@@ -171,7 +174,7 @@ class FlatFoot_Helper {
     closedir($d1);
     
     foreach(Cms_Partial::create()->find_all() as $partial) {
-      $sanitized_name = str_replace(':', ';', $partial->name);
+      $sanitized_name = preg_replace('#:#simU', ';', $partial->name);
       
       $partial_list[$sanitized_name] = $partial;
     }
@@ -187,14 +190,18 @@ class FlatFoot_Helper {
       
       if(!$partial) {
         $partial = new Cms_Partial();
-        $partial->name = str_replace(';', ':', $sanitized_name);
+        $partial->name = preg_replace('#;#simU', ':', $sanitized_name);
         $partial->html_code = file_get_contents($partial_path);
       }
       
       $partial->auto_timestamps = false;
       $definition = $partial->serialize();
       $definition = $definition['fields'];
-      unset($definition['html_code'], $definition['created_at'], $definition['updated_at']);
+      
+      unset($definition['name'],
+        $definition['html_code'], 
+        $definition['created_at'], 
+        $definition['updated_at']);
       
       $timezone = new DateTimeZone(Phpr::$config->get('TIMEZONE'));
       
@@ -210,7 +217,7 @@ class FlatFoot_Helper {
       if($partial_exists && $partial_updated > $db_updated) {
         if($partial_definition_exists) {
           $definition = json_decode(file_get_contents($partial_definition_path));
-          
+
           $partial->unserialize(array('fields' => $definition));
         }
         else {
@@ -238,12 +245,11 @@ class FlatFoot_Helper {
             echo "Partial deletion. ({$partial_path})<br />";
         }
       }
-      else if($db_updated > $partial_updated) {
+      else if(!$partial_exists || $db_updated > $partial_updated) {
         $content = trim($partial->html_code);
         
         if($content && $content !== '-') {
           $this->file_put_contents($partial_path, $content);
-          
           $this->file_put_contents($partial_definition_path, json_tidy(json_encode($definition)));
           
           // db content hasn't changed, but re-sync timestamps
@@ -273,6 +279,7 @@ class FlatFoot_Helper {
       $page->auto_timestamps = false;
       $definition = $page->serialize();
       $definition = $definition['fields'];
+      
       unset($definition['content'], 
         $definition['created_at'], 
         $definition['updated_at'], 
@@ -326,10 +333,11 @@ class FlatFoot_Helper {
             $page_block_name_path = $page_dir . 'page_block_name_' . $i . '.php';
             $page_block_content_path = $page_dir . 'page_block_content_' . $i . '.php';
             
-            if(file_exists($page_block_path)) {
+            if(file_exists($page_block_name_path))
               $definition['page_block_name_' . $i] = file_get_contents($page_block_name_path);
+            
+            if(file_exists($page_block_content_path))
               $definition['page_block_content_' . $i] = file_get_contents($page_block_content_path);
-            }
           }
           
           $page->unserialize(array('fields' => $definition));
