@@ -32,7 +32,7 @@ FlatFoot uses JSON to encode CMS object definitions, which is currently not *'ti
 FlatFoot must replace characters which are reserved on some operating systems (mostly Windows). For partials it replaces colons with semi-colons, for pages it uses the page path and replaces non-latin characters with underscores.  
 
 ## Credit
-Prior to creating FlatFoot, I attempted modifying [Yellow Canvas by Panthr](http://forum.lemonstandapp.com/topic/991/lemonstand-module-yellow-canvas/) for my needs, but it solves problems in a different fashion than for my needs.
+Prior to creating FlatFoot, I attempted modifying [Yellow Canvas by Panthr](http://forum.lemonstandapp.com/topic/991/lemonstand-module-yellow-canvas/), but it solves problems in a different fashion than for my needs.
 
 ## License
 `ls-module-flatfoot` is released under the MIT license. A copy of the MIT license can be found in the `LICENSE` file.
