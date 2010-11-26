@@ -2,7 +2,10 @@
 LemonStand module that synchronizes database CMS objects (templates, partials, and pages) with filesystem CMS objects.
 
 ## Installation
-Download FlatFoot as a ZIP, and extract `flatfoot` folder into the `modules` directory of LemonStand (`modules/flatfoot/README.md` should exist).
+1) Download FlatFoot
+1) Create a folder named `flatfoot` in the `modules` directory.
+1) Extract all files into the `modules/flatfoot` directory (`modules/flatfoot/README.md` should exist).
+1) Done!
 
 ## Usage
 While logged into the Administration Area, each page reload (either in the backend or frontend) will synchronize any changes from the database into the filesystem, or any changes from the filesystem into the database.  
