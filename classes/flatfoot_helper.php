@@ -89,22 +89,58 @@ class FlatFoot_Helper {
   }
   
   public function sync_templates() {
-    foreach(Cms_Template::create()->find_all() as $template) {
+    $template_list = array();
+    $templates_dir = $this->settings->storage_dir . 'templates/';
+    
+    $this->mkdir($templates_dir);
+    
+    if(!$d1 = @opendir($templates_dir))
+      return;
+
+    while(($path = readdir($d1)) !== false) {
+      if($path === '.' || $path === '..')
+        continue;
+      
+      $path = explode('.', $path);
+      
+      if(end($path) === 'php') {
+        $sanitized_name = implode('.', array_slice($path, 0, -1));
+        
+        $template_list[$sanitized_name] = false;
+      }
+    }
+
+    closedir($d1);
+    
+    foreach(Cms_template::create()->find_all() as $template) {
+      $sanitized_name = preg_replace('#:#simU', ';', $template->name);
+      
+      $template_list[$sanitized_name] = $template;
+    }
+    
+    foreach($template_list as $sanitized_name => $template) {
+      $template_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '.php';
+      $template_exists = file_exists($template_path);
+      $template_updated = $template_exists ? filemtime($template_path) : 0;
+      $template_dir = $this->settings->storage_dir . 'templates/' . $sanitized_name . '/';
+      $template_definition_path = $template_dir . 'definition.inc';
+      $template_definition_exists = file_exists($template_definition_path);
+      $template_definition_updated = $template_definition_exists ? filemtime($template_definition_path) : 0;
+      
+      if(!$template) {
+        $template = new Cms_template();
+        $template->name = preg_replace('#;#simU', ':', $sanitized_name);
+        $template->html_code = file_get_contents($template_path);
+      }
+      
       $template->auto_timestamps = false;
       $definition = $template->serialize();
       $definition = $definition['fields'];
       
-      unset($definition['html_code'], 
+      unset($definition['name'],
+        $definition['html_code'], 
         $definition['created_at'], 
         $definition['updated_at']);
-      
-      $sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower($template->name));
-      $template_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '.php';
-      $template_exists = file_exists($template_path);
-      $template_updated = $template_exists ? filemtime($template_path) : 0;
-      $template_definition_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '/definition.inc';
-      $template_definition_exists = file_exists($template_definition_path);
-      $template_definition_updated = $template_definition_exists ? filemtime($template_definition_path) : 0;
       
       $timezone = new DateTimeZone(Phpr::$config->get('TIMEZONE'));
       
@@ -123,31 +159,62 @@ class FlatFoot_Helper {
 
           $template->unserialize(array('fields' => $definition));
         }
-        
-        $template->html_code = file_get_contents($template_path);
-        $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $template_updated));
-        $template->save();
-        
-        if($this->settings->debug)
-          echo "Template (file > db) synchronized. ({$template_path})<br />";
-      }
-      else if($db_updated > $template_updated) {
-        $this->file_put_contents($template_path, $template->html_code);
-        $this->file_put_contents($template_definition_path, json_tidy(json_encode($definition)));
-        
-        // db content hasn't changed, but re-sync timestamps
-        $template_exists = file_exists($template_path);
-        $template_updated = $template_exists ? filemtime($template_path) : 0;
-
-        if($template_updated) {
-          $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $template_updated));
-          $template->save();
+        else {
+          // no definitions found, so we create a default
+          $this->file_put_contents($template_definition_path, json_tidy(json_encode($definition)));
         }
         
-        if($this->settings->debug)
-          echo "Template (db > file) synchronized. ({$template_path})<br />";
+        $content = trim(file_get_contents($template_path));
+        
+        if($content && $content !== '-') {
+          $template->html_code = $content;
+          $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $template_updated));
+          $template->save();
+          
+          if($this->settings->debug)
+            traceLog("Template (file > db) synchronized. ({$template_path})", 'FLATFOOT');
+        }
+        else {
+          $this->delete_template($template);
+        }
+      }
+      else if(!$template_exists || $db_updated > $template_updated) {
+        $content = trim($template->html_code);
+        
+        if($content && $content !== '-') {
+          $this->file_put_contents($template_path, $content);
+          $this->file_put_contents($template_definition_path, json_tidy(json_encode($definition)));
+          
+          // db content hasn't changed, but re-sync timestamps
+          $template_updated = filemtime($template_path);
+
+          $template->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $template_updated));
+          $template->save();
+          
+          if($this->settings->debug)
+            traceLog("Template (db > file) synchronized. ({$template_path})", 'FLATFOOT');
+        }
+        else {
+          $this->delete_template($template);
+        }
       }
     }
+  }
+  
+  public function delete_template($template, $params = array('db_delete' => true)) {
+    $sanitized_name = preg_replace('#:#simU', ';', $template->name);
+    
+    $template_path = $this->settings->storage_dir . 'templates/' . $sanitized_name . '.php';
+    $template_dir = $this->settings->storage_dir . 'templates/' . $sanitized_name . '/';
+    
+    if($params['db_delete'])
+      $template->delete();
+    
+    $this->rmfile($template_path);
+    $this->rmdir($template_dir);
+    
+    if($this->settings->debug)
+      traceLog("Template deleted. ({$template_path})", 'FLATFOOT');
   }
   
   public function sync_partials() {
@@ -160,15 +227,16 @@ class FlatFoot_Helper {
       return;
 
     while(($path = readdir($d1)) !== false) {
-        if($path === '.' || $path === '..')
-            continue;
-        $path = explode('.', $path);
+      if($path === '.' || $path === '..')
+        continue;
+      
+      $path = explode('.', $path);
+      
+      if(end($path) === 'php') {
+        $sanitized_name = implode('.', array_slice($path, 0, -1));
         
-        if(end($path) === 'php') {
-          $sanitized_name = implode('.', array_slice($path, 0, -1));
-          
-          $partial_list[$sanitized_name] = false;
-        }
+        $partial_list[$sanitized_name] = false;
+      }
     }
 
     closedir($d1);
@@ -233,16 +301,10 @@ class FlatFoot_Helper {
           $partial->save();
           
           if($this->settings->debug)
-            echo "Partial (file > db) synchronized. ({$partial_path})<br />";
+            traceLog("Partial (file > db) synchronized. ({$partial_path})", 'FLATFOOT');
         }
         else {
-          $partial->delete();
-          
-          $this->rmfile($partial_path);
-          $this->rmdir($partial_dir);
-          
-          if($this->settings->debug)
-            echo "Partial deletion. ({$partial_path})<br />";
+          $this->delete_partial($partial);
         }
       }
       else if(!$partial_exists || $db_updated > $partial_updated) {
@@ -259,23 +321,95 @@ class FlatFoot_Helper {
           $partial->save();
           
           if($this->settings->debug)
-            echo "Partial (db > file) synchronized. ({$partial_path})<br />";
+            traceLog("Partial (db > file) synchronized. ({$partial_path})", 'FLATFOOT');
         }
         else {
-          $partial->delete();
-          
-          $this->rmfile($partial_path);
-          $this->rmdir($partial_dir);
-          
-          if($this->settings->debug)
-            echo "Partial deletion. ({$partial_path})<br />";
+          $this->delete_partial($partial);
         }
       }
     }
   }
   
+  public function delete_partial($partial, $params = array('db_delete' => true)) {
+    $sanitized_name = preg_replace('#:#simU', ';', $partial->name);
+    
+    $partial_path = $this->settings->storage_dir . 'partials/' . $sanitized_name . '.php';
+    $partial_dir = $this->settings->storage_dir . 'partials/' . $sanitized_name . '/';
+    
+    if($params['db_delete'])
+      $partial->delete();
+    
+    $this->rmfile($partial_path);
+    $this->rmdir($partial_dir);
+    
+    if($this->settings->debug)
+      traceLog("Partial deleted. ({$partial_path})", 'FLATFOOT');
+  }
+  
   public function sync_pages() {
-    foreach(Cms_Page::create()->find_all() as $page) {
+    $page_list = array();
+    $pages_dir = $this->settings->storage_dir . 'pages/';
+    
+    $this->mkdir($pages_dir);
+    
+    if(!$d1 = @opendir($pages_dir))
+      return;
+
+    while(($path = readdir($d1)) !== false) {
+      if($path === '.' || $path === '..')
+        continue;
+      
+      $path = explode('.', $path);
+      
+      if(end($path) === 'php') {
+        $sanitized_name = implode('.', array_slice($path, 0, -1));
+        
+        $page_list[$sanitized_name] = false;
+      }
+    }
+
+    closedir($d1);
+    
+    foreach(Cms_page::create()->find_all() as $page) {
+      $sanitized_name = ($sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower(substr($page->url, 1)))) ? $sanitized_name : 'home';
+      
+      $page_list[$sanitized_name] = $page;
+    }
+    
+    foreach($page_list as $sanitized_name => $page) {
+      
+      $page_dir = $this->settings->storage_dir . 'pages/' . $sanitized_name . '/';
+      $page_path = $this->settings->storage_dir . 'pages/' . $sanitized_name . '.php';
+      $page_exists = file_exists($page_path);
+      $page_updated = $page_exists ? filemtime($page_path) : 0;
+      $page_files = array('pre_action.php', 'post_action.php', 'ajax_handlers.php', 'head.php');
+      
+      for($i = 1, $l = 6; $i < $l; ++$i)
+        $page_files[] = 'page_block_content_' . $i . '.php';
+      
+      foreach($page_files as $file_path) {
+        $file_updated = file_exists($page_dir . $file_path) ? filemtime($page_dir . $file_path) : 0;
+        
+        if($file_updated > $page_updated)
+          $page_updated = $file_updated;
+      }
+      
+      $page_definition_path = $page_dir . 'definition.inc';
+      $page_definition_exists = file_exists($page_definition_path);
+      $page_definition_updated = $page_definition_exists ? filemtime($page_definition_path) : 0;
+      
+      if(!$page) {
+        $page = new Cms_Page();
+        $page->name = $sanitized_name;
+        $page->content = file_get_contents($page_path);
+        
+        for($i = 1, $l = 6; $i < $l; ++$i) {
+          $name = 'page_block_name_' . $i;
+          
+          $page->$name = $i; // default page block titles are 1, 2, 3, etc.
+        }
+      }
+      
       $page->auto_timestamps = false;
       $definition = $page->serialize();
       $definition = $definition['fields'];
@@ -290,15 +424,6 @@ class FlatFoot_Helper {
         
       for($i = 1, $l = 6; $i < $l; ++$i)
         unset($definition['page_block_content_' . $i]);
-        
-      $sanitized_name = ($sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower(substr($page->url, 1)))) ? $sanitized_name : 'home';
-      $page_dir = $this->settings->storage_dir . 'pages/' . $sanitized_name . '/';
-      $page_path = $this->settings->storage_dir . 'pages/' . $sanitized_name . '.php';
-      $page_exists = file_exists($page_path);
-      $page_updated = $page_exists ? filemtime($page_path) : 0;
-      $page_definition_path = $page_dir . 'definition.inc';
-      $page_definition_exists = file_exists($page_definition_path);
-      $page_definition_updated = $page_definition_exists ? filemtime($page_definition_path) : 0;
       
       $timezone = new DateTimeZone(Phpr::$config->get('TIMEZONE'));
       
@@ -312,85 +437,108 @@ class FlatFoot_Helper {
       }
 
       $this->mkdir($page_dir);
-      
+
       if($page_exists && $page_updated > $db_updated) {
-        if($page_definition_exists) {
-          $definition = array_merge_recursive_distinct($definition, json_decode(file_get_contents($page_definition_path)));
+        $content = trim(file_get_contents($page_path));
         
-          if(file_exists($page_dir . 'post_action.php'))
-            $definition['action_code'] = file_get_contents($page_dir . 'post_action.php');
+        if($content && $content !== '-') {
+          if($page_definition_exists) {
+            $definition = array_merge_recursive_distinct($definition, json_decode(file_get_contents($page_definition_path)));
           
-          if(file_exists($page_dir . 'ajax_handlers.php'))
-            $definition['ajax_handlers_code'] = file_get_contents($page_dir . 'ajax_handlers.php');
+            if(file_exists($page_dir . 'pre_action.php'))
+              $definition['pre_action'] = file_get_contents($page_dir . 'pre_action.php');
             
-          if(file_exists($page_dir . 'pre_action.php'))
-            $definition['pre_action'] = file_get_contents($page_dir . 'pre_action.php');
-          
-          if(file_exists($page_dir . 'head.php'))
-            $definition['head'] = file_get_contents($page_dir . 'head.php');
-          
-          for($i = 1, $l = 6; $i < $l; ++$i) {
-            $page_block_name_path = $page_dir . 'page_block_name_' . $i . '.php';
-            $page_block_content_path = $page_dir . 'page_block_content_' . $i . '.php';
+            if(file_exists($page_dir . 'post_action.php'))
+              $definition['action_code'] = file_get_contents($page_dir . 'post_action.php');
             
-            if(file_exists($page_block_name_path))
-              $definition['page_block_name_' . $i] = file_get_contents($page_block_name_path);
+            if(file_exists($page_dir . 'ajax_handlers.php'))
+              $definition['ajax_handlers_code'] = file_get_contents($page_dir . 'ajax_handlers.php');
+
+            if(file_exists($page_dir . 'head.php'))
+              $definition['head'] = file_get_contents($page_dir . 'head.php');
             
-            if(file_exists($page_block_content_path))
-              $definition['page_block_content_' . $i] = file_get_contents($page_block_content_path);
+            for($i = 1, $l = 6; $i < $l; ++$i) {
+              $page_block_content_path = $page_dir . 'page_block_content_' . $i . '.php';
+              
+              if(file_exists($page_block_content_path))
+                $definition['page_block_content_' . $i] = file_get_contents($page_block_content_path);
+            }
+            
+            $page->unserialize(array('fields' => $definition));
           }
           
-          $page->unserialize(array('fields' => $definition));
-        }
-        
-        // sync timestamps and save
-        $page->content = file_get_contents($page_path);
-        $page->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $page_updated));
-        $page->save();
-        
-        if($this->settings->debug)
-          echo "Page (file > db) synchronized. ({$page_path})<br />";
-      }
-      else if($db_updated > $page_updated) {
-        $this->file_put_contents($page_path, $page->content);
-        
-        if($page->action_code)
-          $this->file_put_contents($page_dir . 'post_action.php', $page->action_code);
-        
-        if($page->ajax_handlers_code)
-          $this->file_put_contents($page_dir . 'ajax_handlers.php', $page->ajax_handlers_code);
-        
-        if($page->pre_action)
-          $this->file_put_contents($page_dir . 'pre_action.php', $page->pre_action);
-        
-        if($page->head)
-          $this->file_put_contents($page_dir . 'head.php', $page->head);
-        
-        for($i = 1, $l = 6; $i < $l; ++$i) {
-          $name = 'page_block_name_' . $i;
-          $content = 'page_block_content_' . $i;
-          
-          if($page->$content) {
-            $this->file_put_contents($page_dir . $name . '.php', $page->$content);
-            $this->file_put_contents($page_dir . $content . '.php', $page->$content);
-          }
-        }
-        
-        $this->file_put_contents($page_definition_path, json_tidy(json_encode($definition)));
-
-        // db content hasn't changed, but re-sync timestamps and save
-        $page_exists = file_exists($page_path);
-        $page_updated = $page_exists ? filemtime($page_path) : 0;
-
-        if($page_updated) {
+          // sync timestamps and save
+          $page->content = $content;
           $page->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $page_updated));
           $page->save();
+          
+          if($this->settings->debug)
+            traceLog("Page (file > db) synchronized. ({$page_path})", 'FLATFOOT');
         }
+        else {
+          $this->delete_page($page);
+        }
+      }
+      else if(!$page_exists || $db_updated > $page_updated) {
+        $content = trim($page->content);
         
-        if($this->settings->debug)
-          echo "Page (db > file) synchronized. ({$page_path})<br />";
+        if($content && $content !== '-') {
+          $this->file_put_contents($page_path, $page->content);
+          
+          if($page->pre_action)
+            $this->file_put_contents($page_dir . 'pre_action.php', $page->pre_action);
+            
+          if($page->action_code)
+            $this->file_put_contents($page_dir . 'post_action.php', $page->action_code);
+          
+          if($page->ajax_handlers_code)
+            $this->file_put_contents($page_dir . 'ajax_handlers.php', $page->ajax_handlers_code);
+          
+          if($page->head)
+            $this->file_put_contents($page_dir . 'head.php', $page->head);
+          
+          for($i = 1, $l = 6; $i < $l; ++$i) {
+            $content = 'page_block_content_' . $i;
+            
+            if($page->$content)
+              $this->file_put_contents($page_dir . 'page_block_content_' . $i . '.php', $page->$content);
+          }
+          
+          $this->file_put_contents($page_definition_path, json_tidy(json_encode($definition)));
+
+          // db content hasn't changed, but re-sync timestamps and save
+          $page_exists = file_exists($page_path);
+          $page_updated = $page_exists ? filemtime($page_path) : 0;
+
+          if($page_updated) {
+            $page->updated_at = new Phpr_DateTime(date('Y-m-d H:i:s', $page_updated));
+            $page->save();
+          }
+          
+          if($this->settings->debug)
+            traceLog("Page (db > file) synchronized. ({$page_path})", 'FLATFOOT');
+        }
+        else {
+          $this->delete_page($page);
+        }
       }
     }
+  }
+  
+  public function delete_page($page, $params = array('db_delete' => true)) {
+    $sanitized_name = ($sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower(substr($page->url, 1)))) ? $sanitized_name : 'home';
+    
+    $page_path = $this->settings->storage_dir . 'pages/' . $sanitized_name . '.php';
+    $page_dir = $this->settings->storage_dir . 'pages/' . $sanitized_name . '/';
+    
+    if($params['db_delete'])
+      $page->delete();
+    
+    $this->rmfile($page_path);
+    $this->rmdir($page_dir);
+    
+    if($this->settings->debug)
+      traceLog("Page deleted. ({$page_path})", 'FLATFOOT');
   }
   
   private function file_put_contents($path, $contents) {
