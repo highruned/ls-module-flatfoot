@@ -12,7 +12,7 @@ You can locate the filesystem CMS objects at `resources/cms` in `resources/cms/t
 ### Creation/Deletion
 In order to add a CMS object from the filesystem, simply create them as you normally would but with sanitized filenames in mind (colons become semicolons, read below). However, in order for FlatFile to update filesystem files from changes made in the Administration Area, they must belong to the same user/group as PHP.  
   
-In order to delete a CMS object from teh filesystem, simply save the file with no content, or just `-` as the content. Again, correct file permissions must be set.
+In order to delete a CMS object from the filesystem, simply save the file with no content, or just `-` as the content. Again, correct file permissions must be set.
 
 ### Enable Debugging
 In order to see what FlatFoot is doing upon page refresh, simply enable `DEV_MODE` in `config/config.php`.
@@ -32,7 +32,7 @@ FlatFoot uses JSON to encode CMS object definitions, which is currently not *'ti
 FlatFoot must replace characters which are reserved on some operating systems (mostly Windows). For partials it replaces colons with semi-colons, for pages it uses the page path and replaces non-latin characters with underscores.  
 
 ## Credit
-Prior to creating FlatFoot, I attempted modifying [Yellow Canvas by Panthr](http://forum.lemonstandapp.com/topic/991/lemonstand-module-yellow-canvas/) for my needs, but found that it solves a different set of problems than I needed.
+Prior to creating FlatFoot, I attempted modifying [Yellow Canvas by Panthr](http://forum.lemonstandapp.com/topic/991/lemonstand-module-yellow-canvas/) for my needs, but it solves problems in a different fashion than for my needs.
 
 ## License
 `ls-module-flatfoot` is released under the MIT license. A copy of the MIT license can be found in the `LICENSE` file.
