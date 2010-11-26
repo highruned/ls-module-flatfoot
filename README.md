@@ -15,7 +15,7 @@ In order to add a CMS object from the filesystem, simply create them as you norm
 In order to delete a CMS object from the filesystem, simply save the file with no content, or just `-` as the content. Again, correct file permissions must be set.
 
 ### Enable Debugging
-In order to see what FlatFoot is doing upon page refresh, simply enable `DEV_MODE` in `config/config.php`.
+In order to see what FlatFoot is doing upon page refresh, simply enable `DEV_MODE` in `config/config.php`. A log will be places in `logs/flatfoot.txt` (assuming LS has write permissions).
 
 ## Important
 FlatFoot relies on file modification dates; therefore your OS time should be the same as your LemonStand configuration (which can be found in `config/config.php`).
