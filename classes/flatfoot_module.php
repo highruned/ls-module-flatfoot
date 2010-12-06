@@ -29,10 +29,9 @@ class FlatFoot_Module extends Core_ModuleBase {
   }
   
   public function subscribeEvents() {
-    //Backend::$events->addEvent('onDeleteTemplate', $this, 'before_delete_page');
-    //Backend::$events->addEvent('onDeletePartial', $this, 'before_delete_page');
-    Backend::$events->addEvent('onDeletePage', $this, 'before_delete_page');
-    
+    Backend::$events->addEvent('cms:onDeleteTemplate', $this, 'before_delete_template');
+    Backend::$events->addEvent('cms:onDeletePartial', $this, 'before_delete_partial');
+    Backend::$events->addEvent('cms:onDeletePage', $this, 'before_delete_page');
     Backend::$events->addEvent('cms:onBeforeDisplay', $this, 'before_page_display'); // doesn't take affect until 2nd reload
   }
   
