@@ -113,7 +113,7 @@ class FlatFoot_Helper {
     closedir($d1);
     
     foreach(Cms_template::create()->find_all() as $template) {
-      $sanitized_name = preg_replace('#:#simU', ';', $template->name);
+      $sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower($template->name));
       
       $template_list[$sanitized_name] = $template;
     }
@@ -172,7 +172,7 @@ class FlatFoot_Helper {
           $template->save();
           
           if($this->settings->debug)
-            traceLog("Template (file > db) synchronized. ({$template_path})", 'FLATFOOT');
+            traceLog("Template (file > db) synchronized. ({$template_path})", 'flatfoot');
         }
         else {
           $this->delete_template($template);
@@ -192,7 +192,7 @@ class FlatFoot_Helper {
           $template->save();
           
           if($this->settings->debug)
-            traceLog("Template (db > file) synchronized. ({$template_path})", 'FLATFOOT');
+            traceLog("Template (db > file) synchronized. ({$template_path})", 'flatfoot');
         }
         else {
           $this->delete_template($template);
@@ -301,7 +301,7 @@ class FlatFoot_Helper {
           $partial->save();
           
           if($this->settings->debug)
-            traceLog("Partial (file > db) synchronized. ({$partial_path})", 'FLATFOOT');
+            traceLog("Partial (file > db) synchronized. ({$partial_path})", 'flatfoot');
         }
         else {
           $this->delete_partial($partial);
@@ -321,7 +321,7 @@ class FlatFoot_Helper {
           $partial->save();
           
           if($this->settings->debug)
-            traceLog("Partial (db > file) synchronized. ({$partial_path})", 'FLATFOOT');
+            traceLog("Partial (db > file) synchronized. ({$partial_path})", 'flatfoot');
         }
         else {
           $this->delete_partial($partial);
@@ -473,7 +473,7 @@ class FlatFoot_Helper {
           $page->save();
           
           if($this->settings->debug)
-            traceLog("Page (file > db) synchronized. ({$page_path})", 'FLATFOOT');
+            traceLog("Page (file > db) synchronized. ({$page_path})", 'flatfoot');
         }
         else {
           $this->delete_page($page);
@@ -516,7 +516,7 @@ class FlatFoot_Helper {
           }
           
           if($this->settings->debug)
-            traceLog("Page (db > file) synchronized. ({$page_path})", 'FLATFOOT');
+            traceLog("Page (db > file) synchronized. ({$page_path})", 'flatfoot');
         }
         else {
           $this->delete_page($page);

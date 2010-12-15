@@ -9,13 +9,13 @@ class FlatFoot_Module extends Core_ModuleBase {
       'debug' => Phpr::$config->get('DEV_MODE')
     ));
     
-    if(Phpr::$security->getUser()) { // resynctastic if logged in
+    if(!Phpr::$config->get('DISABLE_FLATFOOT') && Phpr::$security->getUser()) { // resynctastic if logged in
       $this->helper->sync_templates();
       $this->helper->sync_partials();
       $this->helper->sync_pages();
     }
     
-    $CONFIG['TRACE_LOG']['FLATFOOT'] = PATH_APP . '/logs/flatfoot.txt';
+    $CONFIG['TRACE_LOG']['flatfoot'] = PATH_APP . '/logs/flatfoot.txt';
     
     return new Core_ModuleInfo(
       "FlatFoot",
