@@ -39,7 +39,7 @@ class FlatFoot_Module extends Core_ModuleBase {
     $this->helper->delete_template($template, array('db_delete' => false));
   }
   
-  public function before_delete_partial($page) {
+  public function before_delete_partial($partial) {
     $this->helper->delete_partial($partial, array('db_delete' => false));
   }
   
