@@ -104,7 +104,7 @@ class FlatFoot_Helper {
       $path = explode('.', $path);
       
       if(end($path) === 'php') {
-        $sanitized_name = implode('.', array_slice($path, 0, -1));
+        $sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower(implode('.', array_slice($path, 0, -1))));
         
         $template_list[$sanitized_name] = false;
       }
@@ -114,7 +114,7 @@ class FlatFoot_Helper {
     
     foreach(Cms_template::create()->find_all() as $template) {
       $sanitized_name = preg_replace('#[^a-zA-Z0-9]#', '_', strtolower($template->name));
-      
+
       $template_list[$sanitized_name] = $template;
     }
     
